@@ -1,0 +1,21 @@
+{
+  "_comment": "Job sources PSEEK searches. Free JSON/RSS boards are always on. Add company boards (greenhouse/lever slugs), user-defined RSS feeds (rss), and USER-DEFINED keyed APIs (user_apis) whose key_name you store in YOUR vault via configure_source_key.py. allow_hosts authorizes your own source hosts through the Guardian.",
+  "greenhouse": [],
+  "lever": [],
+  "rss": [
+    {"name": "higheredjobs", "url": "https://www.higheredjobs.com/rss/articleFeed.cfm", "location": ""}
+  ],
+  "user_apis": [
+    {"_example": "LinkedIn/Indeed via your own RapidAPI/SerpAPI endpoint",
+     "name": "myapi", "key_name": "my_jobs_api_key",
+     "url_template": "https://example.com/search?query={query}&api_key={key}",
+     "query": "software engineer toronto",
+     "mapping": {"list": "results", "id": "id", "title": "title",
+                 "company": "company", "description": "snippet",
+                 "location": "location", "url": "link"}}
+  ],
+  "adzuna": {"country": "ca", "where": "Toronto", "what": "teacher machine learning"},
+  "allow_hosts": [],
+  "refresh_minutes": 30,
+  "disable": []
+}
