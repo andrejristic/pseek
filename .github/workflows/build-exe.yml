@@ -1,0 +1,44 @@
+name: build-exe
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  exe:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/Scripts/pip install "PySide6>=6.5" pyinstaller
+      - name: Inno Setup
+        run: |
+          if [ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]; then choco install innosetup --no-progress -y; fi
+      - name: Build installer
+        run: bash packaging/build_exe.sh
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist\PSEEK-Setup-*.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$env:RUNNER_TEMP\pk" -Wait
+          if (-not (Test-Path "$env:RUNNER_TEMP\pk\pseek.exe")) { throw "not installed" }
+      - name: Selfcheck
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $p = Start-Process "$env:RUNNER_TEMP\pk\pseek.exe" -ArgumentList '--selfcheck' -PassThru -Wait -RedirectStandardOutput "$env:RUNNER_TEMP\st.log" -RedirectStandardError "$env:RUNNER_TEMP\ste.log"
+          Write-Host "--- stdout:"; Get-Content "$env:RUNNER_TEMP\st.log" -ErrorAction SilentlyContinue
+          Write-Host "--- stderr:"; Get-Content "$env:RUNNER_TEMP\ste.log" -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "selfcheck failed ($($p.ExitCode))" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pseek-exe
+          path: dist/*.exe

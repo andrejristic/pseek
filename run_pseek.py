@@ -12,11 +12,27 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
 
+def _workspaces_base():
+    env = os.environ.get("PSEEK_WORKSPACES")
+    if env:
+        base = env
+    elif getattr(sys, "frozen", False):
+        if sys.platform == "win32":
+            root = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        else:
+            root = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+        base = os.path.join(root, "pseek", "workspaces")
+    else:
+        base = os.path.join(ROOT, "workspaces")
+    os.makedirs(base, exist_ok=True)
+    return base
+
+
 def wire(user=None, passphrase=None):
     from workspace import Workspace
     from llm import LLMOperator
     from billing import EntitlementManager
-    base = os.path.join(ROOT, "workspaces")
+    base = _workspaces_base()
     user = user or os.environ.get("PSEEK_USER", "demo")
     passphrase = passphrase or os.environ.get("PSEEK_PASSPHRASE", "pseek-dev-pass")
     ws = Workspace(base, user, passphrase)
@@ -35,6 +51,11 @@ def selfcheck():
 
 
 def main():
+    for _s in (sys.stdout, sys.stderr):   # emoji / non-ASCII output on Windows
+        try:
+            _s.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     if "--selfcheck" in sys.argv:
         selfcheck()
         return

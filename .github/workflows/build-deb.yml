@@ -1,0 +1,31 @@
+name: build-deb
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+jobs:
+  deb:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install "PySide6>=6.5" pyinstaller
+      - name: Build .deb
+        run: bash packaging/build_deb.sh
+      - name: Install
+        run: sudo apt-get update && sudo apt-get install -y ./dist/pseek_*_amd64.deb
+      - name: Selfcheck (headless)
+        run: |
+          sudo apt-get install -y libxcb-cursor0
+          export QT_QPA_PLATFORM=offscreen
+          pseek --selfcheck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pseek-deb
+          path: dist/*.deb
