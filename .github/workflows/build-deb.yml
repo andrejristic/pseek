@@ -17,7 +17,7 @@ jobs:
           python -m venv .venv
           .venv/bin/pip install "PySide6>=6.5" pyinstaller
       - name: Build .deb
-        run: bash packaging/build_deb.sh
+        run: bash installer/build_deb.sh
       - name: Install
         run: sudo apt-get update && sudo apt-get install -y ./dist/pseek_*_amd64.deb
       - name: Selfcheck (headless)

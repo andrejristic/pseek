@@ -39,7 +39,7 @@ def test_source_output_launches():
 
 
 def test_deb_is_built_and_valid():
-    from packaging.build_deb import build
+    from installer.build_deb import build
     path = build()
     check("a .deb file is produced", os.path.exists(path) and path.endswith(".deb"))
     data = open(path, "rb").read()

@@ -23,7 +23,7 @@ jobs:
         run: |
           if [ ! -f "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" ]; then choco install innosetup --no-progress -y; fi
       - name: Build installer
-        run: bash packaging/build_exe.sh
+        run: bash installer/build_exe.sh
       - name: Install silently
         shell: pwsh
         run: |
