@@ -62,7 +62,7 @@ def test_deb_is_built_and_valid():
 
 
 def test_exe_app_specs_present():
-    pk = os.path.join(ROOT, "packaging")
+    pk = os.path.join(ROOT, "installer")
     need = ["pseek.spec", "build.py", "build_exe.bat", "build_app.sh", "build_deb.py"]
     missing = [f for f in need if not os.path.exists(os.path.join(pk, f))]
     check("PyInstaller spec + build scripts for all 4 outputs exist", not missing,
