@@ -1,0 +1,58 @@
+name: deploy-backend
+# Publishes billing-backend/ to Cloudflare Workers. Needs two repo secrets:
+#   CLOUDFLARE_API_TOKEN (template "Edit Cloudflare Workers"), CLOUDFLARE_ACCOUNT_ID.
+# Creates the KV namespace on first run. Worker secrets (Square, Resend, LLM keys,
+# ENTITLEMENT_SIGNING_KEY, ADMIN_TOKEN) are added in the Cloudflare dashboard.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["billing-backend/**", ".github/workflows/deploy-backend.yml"]
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: billing-backend
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cloudflare secrets present?
+        id: cf
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice title=deploy skipped::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (Settings > Secrets and variables > Actions), see billing-backend/VODIC-BACKEND-SR.md"
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.cf.outputs.ok == '1'
+        with:
+          node-version: "22"
+      - if: steps.cf.outputs.ok == '1'
+        run: npm install --no-audit --no-fund && npm test
+      - name: KV namespace (create once)
+        if: steps.cf.outputs.ok == '1'
+        run: |
+          find_id() { npx wrangler kv namespace list 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(next((n['id'] for n in d if n['title'].endswith('pseek-kv')), ''))"; }
+          id=$(find_id)
+          if [ -z "$id" ]; then npx wrangler kv namespace create pseek-kv; id=$(find_id); fi
+          [ -n "$id" ] || { echo "::error::could not find or create the KV namespace"; exit 1; }
+          sed -i "s/__KV_NAMESPACE_ID__/$id/" wrangler.toml
+          echo "KV namespace: $id"
+      - name: Deploy
+        if: steps.cf.outputs.ok == '1'
+        run: |
+          set -o pipefail
+          npx wrangler deploy 2>&1 | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "::notice title=PSEEK backend URL::$url"
+          echo "### PSEEK backend: $url" >> "$GITHUB_STEP_SUMMARY"

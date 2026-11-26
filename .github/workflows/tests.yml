@@ -1,0 +1,62 @@
+name: tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python tests (core, billing, account)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run all non-GUI test suites
+        run: |
+          fail=0
+          for t in tests/test_*.py; do
+            grep -q PySide6 "$t" && continue
+            echo "::group::$t"
+            python "$t" || { echo "::error title=$t::failed"; fail=1; }
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  gui:
+    name: GUI tests (PySide6, offscreen)
+    runs-on: ubuntu-22.04
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libdbus-1-3
+      - run: pip install "PySide6>=6.5"
+      - name: Run GUI test suites
+        run: |
+          fail=0
+          for t in tests/test_*.py; do
+            grep -q PySide6 "$t" || continue
+            echo "::group::$t"
+            python "$t" || { echo "::error title=$t::failed"; fail=1; }
+            echo "::endgroup::"
+          done
+          exit $fail
+
+  backend:
+    name: Backend tests (Cloudflare Worker)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: billing-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm test

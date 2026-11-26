@@ -16,6 +16,7 @@
   ],
   "adzuna": {"country": "ca", "where": "Toronto", "what": "teacher machine learning"},
   "allow_hosts": [],
+  "pseek_backend_url": "",
   "refresh_minutes": 30,
   "disable": []
 }

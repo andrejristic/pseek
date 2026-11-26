@@ -9,7 +9,7 @@
 # =============================================================================
 import re
 
-from .backends import (LlamaCppBackend, GroqBackend, MistralBackend,
+from .backends import (ProxyBackend, LlamaCppBackend, GroqBackend, MistralBackend,
                        ClaudeBackend, HeuristicBackend)
 
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
@@ -27,21 +27,24 @@ def redact_messages(messages):
 
 
 class LLMOperator:
-    def __init__(self, guardian, prefer=("groq", "mistral", "claude")):
+    def __init__(self, guardian, prefer=("groq", "mistral", "claude"), account=None):
         self.g = guardian
         self.local = LlamaCppBackend(guardian)
         self.cloud = {"groq": GroqBackend(guardian),
                       "mistral": MistralBackend(guardian),
                       "claude": ClaudeBackend(guardian)}
         self.prefer = prefer
+        self.proxy = ProxyBackend(guardian, account)
         self.heuristic = HeuristicBackend(guardian)
 
     def _order(self, contains_pii):
-        # local GGUF first (free workhorse); then preferred free cloud backends —
+        # local GGUF first (free workhorse); then the user's OWN cloud keys (vault);
+        # then the seller's keys through the PSEEK backend (daily limit per plan) —
         # but if the payload is PII, cloud is skipped entirely.
         seq = [self.local]
         if not contains_pii:
             seq += [self.cloud[n] for n in self.prefer if n in self.cloud]
+            seq.append(self.proxy)
         return seq
 
     def complete(self, messages, contains_pii=False, max_tokens=512):
@@ -60,4 +63,5 @@ class LLMOperator:
 
     def status(self):
         return {"local_gguf": self.local.available(),
-                **{n: b.available() for n, b in self.cloud.items()}}
+                **{n: b.available() for n, b in self.cloud.items()},
+                "pseek_cloud": self.proxy.available()}

@@ -21,14 +21,36 @@ PRO_FEATURES = set(ALL_FEATURES)
 
 
 class EntitlementManager:
-    def __init__(self, registry, now_fn=time.time):
+    """With `account` (billing.account.Account) connected to the PSEEK backend, the tier
+    comes ONLY from the backend-signed entitlement (trial is per email, paid tiers are
+    activated by Square webhooks). Without it (dev / no backend yet) the local 24h
+    trial + activate() logic below is used, as before."""
+
+    def __init__(self, registry, now_fn=time.time, account=None):
         self.registry = registry
         self.now = now_fn
+        self.account = account
         if registry.get_pref("signup_ts") is None:
             registry.set_pref("signup_ts", self.now())
 
+    def _remote(self):
+        return self.account is not None and self.account.configured()
+
+    def _remote_tier(self):
+        p = self.account.entitlement()
+        if not p:
+            return "free"                       # not signed in, other device, or offline too long
+        now = self.now()
+        if p.get("paid_tier") in ("basic", "pro") and p.get("until", 0) > now:
+            return p["paid_tier"]
+        if p.get("trial_until", 0) > now:
+            return "trial"
+        return "free"
+
     # ---- state -------------------------------------------------------------
     def in_trial(self):
+        if self._remote():
+            return self._remote_tier() == "trial"
         return (self.now() - float(self.registry.get_pref("signup_ts", self.now()))) <= TRIAL_SECONDS
 
     def tier(self):
@@ -39,6 +61,8 @@ class EntitlementManager:
         return until is not None and self.now() <= float(until)
 
     def effective_tier(self):
+        if self._remote():
+            return self._remote_tier()
         if self.in_trial():
             return "trial"
         if self.tier() in ("basic", "pro") and self.subscription_active():
@@ -63,7 +87,7 @@ class EntitlementManager:
             return None
         return {"resumes": 1, "covers": 1}   # basic and free
 
-    # ---- purchase result (called after Square confirms) --------------------
+    # ---- local activation (dev / admin without a backend; the backend activates real purchases) ----
     def activate(self, tier, months=1):
         if tier not in PRICES:
             raise ValueError(f"unknown tier {tier}")
@@ -72,10 +96,14 @@ class EntitlementManager:
         return self.effective_tier()
 
     def paywall(self):
-        """What the popup shows."""
+        """What the popup shows. Each paid tier can be bought monthly (auto-renewing) or as a 30-day pass."""
         return {
             "in_trial": self.in_trial(),
             "effective_tier": self.effective_tier(),
+            "kinds": [{"kind": "monthly", "blurb": "Mesečna pretplata (obnavlja se, otkaži kad hoćeš)"},
+                      {"kind": "pass30", "blurb": "Jednokratno, 30 dana"}],
+            "account": ({"email": self.account.email, "logged_in": self.account.logged_in()}
+                        if self._remote() else None),
             "options": [
                 {"tier": "trial", "price": 0.0, "blurb": "Prvih 24h sve uključeno"},
                 {"tier": "basic", "price": PRICES["basic"],

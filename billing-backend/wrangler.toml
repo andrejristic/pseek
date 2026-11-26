@@ -1,0 +1,21 @@
+# PSEEK backend. Secrets are NOT here: add them in the Cloudflare dashboard
+# (Workers & Pages -> pseek-api -> Settings -> Variables and Secrets), see VODIC-BACKEND-SR.md.
+name = "pseek-api"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+# Keep variables you set in the Cloudflare dashboard (e.g. SQUARE_WEBHOOK_URL) across deploys.
+keep_vars = true
+
+# Filled in by the deploy workflow (it creates the namespace on first deploy).
+[[kv_namespaces]]
+binding = "KV"
+id = "__KV_NAMESPACE_ID__"
+
+[vars]
+SQUARE_ENV = "sandbox"
+BILLING_PROVIDER_DEFAULT = "square"
+MAIL_FROM = "PSEEK <noreply@zeravatech.ca>"
+LLM_ORDER = "groq,mistral,anthropic"
+ANTHROPIC_MODEL = "claude-opus-5-5"
+ANTHROPIC_EFFORT = "medium"

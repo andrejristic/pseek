@@ -100,6 +100,28 @@ class ClaudeBackend(Backend):
         return "".join(b.get("text", "") for b in data.get("content", []))
 
 
+# ---- the seller's keys, held by the PSEEK backend (never in the app) ----------
+class ProxyBackend(Backend):
+    """Calls POST /llm on the PSEEK backend, which uses the seller's Groq/Mistral/Claude
+    keys server-side with a daily limit per plan. Needs a signed-in billing.account.Account."""
+    name = "pseek-cloud"
+
+    def __init__(self, guardian, account=None):
+        super().__init__(guardian)
+        self.account = account
+
+    def available(self):
+        return bool(self.account and self.account.configured() and self.account.logged_in())
+
+    def complete(self, messages, max_tokens=512):
+        system = "\n\n".join(m["content"] for m in messages if m.get("role") == "system") or None
+        chat = [{"role": m["role"], "content": m["content"]}
+                for m in messages if m.get("role") in ("user", "assistant")]
+        text = self.account.llm(chat, system=system, max_tokens=max_tokens)
+        self.calls += 1
+        return text
+
+
 # ---- local GGUF via llama.cpp (the workhorse) ------------------------------
 class LlamaCppBackend(Backend):
     name = "local-gguf"

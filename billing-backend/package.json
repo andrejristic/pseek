@@ -1,0 +1,15 @@
+{
+  "name": "pseek-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.160.1"
+  }
+}

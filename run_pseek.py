@@ -28,16 +28,31 @@ def _workspaces_base():
     return base
 
 
+def backend_url():
+    """PSEEK backend (billing + seller LLM keys). Env PSEEK_BACKEND_URL wins, then
+    sources_config.json "pseek_backend_url". Empty = no backend (local test mode)."""
+    url = os.environ.get("PSEEK_BACKEND_URL")
+    if url is None:
+        import json
+        cfg = os.path.join(ROOT, "sources_config.json")
+        if os.path.exists(cfg):
+            with open(cfg, encoding="utf-8") as fh:
+                url = json.load(fh).get("pseek_backend_url", "")
+    return (url or "").strip()
+
+
 def wire(user=None, passphrase=None):
     from workspace import Workspace
     from llm import LLMOperator
-    from billing import EntitlementManager
+    from billing import EntitlementManager, Account, BackendClient
     base = _workspaces_base()
     user = user or os.environ.get("PSEEK_USER", "demo")
     passphrase = passphrase or os.environ.get("PSEEK_PASSPHRASE", "pseek-dev-pass")
     ws = Workspace(base, user, passphrase)
-    op = LLMOperator(ws.guardian)
-    ent = EntitlementManager(ws.registry)
+    url = backend_url()
+    account = Account(ws.guardian, ws.registry, BackendClient(ws.guardian, url)) if url else None
+    op = LLMOperator(ws.guardian, account=account)
+    ent = EntitlementManager(ws.registry, account=account)
     return ws, op, ent
 
 
@@ -47,6 +62,7 @@ def selfcheck():
     print("  workspace :", ws.root)
     print("  llm status:", op.status())
     print("  tier      :", ent.effective_tier())
+    print("  backend   :", backend_url() or "(none — local test mode)")
     print("  font size :", ws.settings.font_size)
 
 

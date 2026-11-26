@@ -14,7 +14,8 @@ DECISION_CLASSES = {
     "send_email",       # sending any email
     "reply_employer",   # replying to an employer
     "accept_offer",     # accepting an offer
-    "purchase",         # any payment / upgrade (Square)
+    "purchase",         # any payment / upgrade (Square / Google Play)
+    "cancel_subscription",  # stopping a paid subscription
     "connect_email",    # connecting an email account (grants access)
     "delete_docs",      # destructive changes to the document pool
 }
