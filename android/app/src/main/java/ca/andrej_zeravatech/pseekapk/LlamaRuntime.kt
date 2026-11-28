@@ -87,13 +87,21 @@ object LlamaRuntime {
         .put("model", modelPath)
         .put("port", PORT)
 
-    private fun alive(): Boolean = try {
-        val c = URL("http://127.0.0.1:$PORT/health").openConnection() as HttpURLConnection
-        c.connectTimeout = 1000
-        c.readTimeout = 1000
-        c.use { responseCode == 200 }
-    } catch (_: Exception) {
-        false
+    private fun alive(): Boolean {
+        val c = try {
+            URL("http://127.0.0.1:$PORT/health").openConnection() as HttpURLConnection
+        } catch (_: Exception) {
+            return false
+        }
+        return try {
+            c.connectTimeout = 1000
+            c.readTimeout = 1000
+            c.responseCode == 200
+        } catch (_: Exception) {
+            false
+        } finally {
+            c.disconnect()
+        }
     }
 
     fun start(context: Context, modelName: String): JSONObject {
