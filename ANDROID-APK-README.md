@@ -1,5 +1,11 @@
 # PSEEK — Android APK (grana `pseek-apk`)
 
+## Status (2026-11-28)
+
+- **Test APK:** [`pseek-0.1.0-test.apk`](https://github.com/andrejristic/pseek/releases/download/v0.1.0-test/pseek-0.1.0-test.apk) (72,6 MB) — već je u [APK indeksu](https://github.com/andrejristic/APK).
+- CI: `build-apk` zelen (Python testovi jezgra + Gradle build); lokalna kopija APK-a je u `apk-artifacts/`.
+- Potpisani `v1.0.0` i backend idu na kraju, kad ti upišeš tajne.
+
 Ovo je **zasebna APK verzija** PSEEK-a. Originalni `main` i grana `mobile-billing`
 ostaju netaknuti. Sav rad za APK nalazi se u folderu `/home/a/Desktop/pseek-apk`
 i (kad se objavi) na grani `pseek-apk` repoa `andrejristic/pseek`.
