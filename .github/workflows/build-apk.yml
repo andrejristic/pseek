@@ -25,10 +25,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install test deps
-        run: pip install pytest
-      - name: Run core tests
-        run: python3 -m pytest tests -q
+      - name: Run core tests (PySide6 GUI suites are not part of the APK)
+        run: |
+          fail=0
+          for t in tests/test_*.py; do
+            grep -q PySide6 "$t" && continue
+            echo "::group::$t"
+            python3 "$t" || { echo "::error title=$t::failed"; fail=1; }
+            echo "::endgroup::"
+          done
+          exit $fail
       - name: Check Android bridge syntax
         run: python3 -m py_compile android/app/src/main/python/mobile_api.py
 
