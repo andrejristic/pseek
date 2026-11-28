@@ -21,3 +21,5 @@ audit/
 keys.json
 secrets.json
 .env
+
+apk-artifacts/
